@@ -1,0 +1,8 @@
+uid = {{ app }}
+gid = {{ app }}
+log file = {{ mysql_log_directory }}/rsyncd.log
+use chroot = false
+[{{ app }}]
+    path = {{ workdir }}
+    read only = true
+    exclude = lost+found/

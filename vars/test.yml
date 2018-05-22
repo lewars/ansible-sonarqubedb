@@ -1,0 +1,7 @@
+---
+# test environment of Sonarqube database
+mysql_query_cache_size: "4G"
+lew1_sonarqubedb_volume_id: /dev/disk/by-id/virtio-ba6c687d-0e02-471f-b
+lew1_sonarqubedb_backup_volume_id: /dev/disk/by-id/virtio-40edc60e-aff7-4b83-9
+lew2_sonarqubedb_volume_id: /dev/disk/by-id/virtio-2bf96236-a8b8-4de2-b
+lew2_sonarqubedb_backup_volume_id: /dev/disk/by-id/virtio-398176c5-13fb-4217-9

@@ -1,0 +1,17 @@
+{{ mysql_log_directory }}/{{ app }}/rsync.client.log {
+    copytruncate
+    daily
+    rotate 14
+    compress
+    missingok
+    create 0644 {{ owner }} {{ owner }}
+}
+
+{{ mysql_log_directory }}/{{ app }}/rsyncd.backup.log {
+    copytruncate
+    daily
+    rotate 14
+    compress
+    missingok
+    create 0644 {{ owner }} {{ owner }}
+}

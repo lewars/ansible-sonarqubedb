@@ -1,0 +1,15 @@
+[mysqld]
+user={{ owner }}
+datadir={{ mysql_datadir }}
+socket={{ mysql_socket }}
+symbolic-links={{ mysql_symbolic_links }}
+general_log_file={{ mysql_general_log_file }}
+general_log={{ mysql_general_log }}
+slow-query-log
+long_query_time={{ mysql_long_query_time }}
+log_error={{ mysql_error_log }}
+pid_file={{ mysql_pid_file }}
+explicit_defaults_for_timestamp={{ mysql_explicit_defaults_for_timestamp }}
+
+[server]
+query_cache_size={{ mysql_query_cache_size }}

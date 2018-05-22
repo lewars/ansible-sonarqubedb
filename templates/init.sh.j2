@@ -1,0 +1,7 @@
+#!/bin/bash -e
+
+/usr/sbin/mysqld --pid-file={{ mysql_pid_file }} --initialize-insecure --user={{ owner }}
+mysql_ssl_rsa_setup --datadir={{ mysql_datadir }}/ --uid {{ owner }} --verbose
+systemctl start mysqld
+cat /opt/mysql/init.sql | mysql -u root
+exit 0

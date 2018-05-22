@@ -1,0 +1,3 @@
+---
+# local environment of Sonarqube database
+mysql_query_cache_size: "15MB"

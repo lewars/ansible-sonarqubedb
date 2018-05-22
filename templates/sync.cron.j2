@@ -1,0 +1,15 @@
+# Sync Jenkins master work directory
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/local/bin
+MAILTO=root
+{% set hosts=hostvars %}
+  {%- for host in hosts -%}
+      {%- if 'mysql' in hostvars[host].inventory_hostname %}
+          {%- if hostvars[host].tp_active_datacenter == True and tp_active_datacenter == False and openstack is defined %}
+*/3 * * * * mysql /usr/local/bin/sync.sh {{ hostvars[host].openstack.public_v4 }}::{{ app }} {{ workdir }} >> {{ mysql_log_directory }}/rsync.client.log
+          {%- elif hostvars[host].tp_active_datacenter == True and tp_active_datacenter == False %}
+# BUG: we have to hardcode local sonarqube01 machine, because ansible will not return all facts for other hosts
+*/3 * * * * mysql /usr/local/bin/sync.sh 192.168.38.7::{{ app }} {{ workdir }} >> {{ mysql_log_directory }}/rsync.client.log
+          {% endif -%}
+      {% endif -%}
+  {%- endfor -%}

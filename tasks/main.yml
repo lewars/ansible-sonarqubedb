@@ -1,0 +1,322 @@
+---
+# Sonarqubedb tasks
+
+- name: Include environment specific files
+  include_vars: "{{ item }}"
+  with_first_found:
+  - "{{ openstack.metadata.environment }}.yml"
+  - local.yml
+
+- name: MySQL must be installed
+  yum:
+    name: "{{ mysql_pkg }}"
+    state: present
+    update_cache: yes
+  notify: Restart MySQL
+
+- name: MySQL group is present
+  group:
+    name: "{{ group }}"
+
+- name: MySQL user is present
+  user:
+    name: "{{ owner }}"
+    comment: "Sonarqube MySQL user"
+    createhome: yes
+    group: "{{ group }}"
+    home: "{{ home }}"
+    state: present
+    shell: "{{ shell }}"
+    system: yes
+
+- name: MySQL home directory is present
+  file:
+    path: "{{ home }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0700
+
+- name: MySQL home directory contents are owned by MySQL
+  file:
+    path: "{{ home }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    recurse: yes
+
+- name: MySQL work directory must be present
+  file:
+    path: "{{ workdir }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ owner }}"
+    mode: 0700
+    recurse: yes
+
+- name: MySQL data directory must be present
+  file:
+    path: "{{ mysql_datadir }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ owner }}"
+    mode: 0755
+    recurse: yes
+
+- name: MySQL must be able to write to the custom data directory via selinux
+  shell: "semanage fcontext -a -t mysqld_db_t '{{ datadir }}(/.*)?'"
+  register: filecontext
+
+- name: Run restore context to reload selinux
+  shell: "restorecon -Rv {{ datadir }}"
+  when: filecontext.rc == 0
+
+- name: the backup snapshot root directory must be present
+  file:
+    path: "{{ snapshot_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0700
+  tags:
+    - backup
+
+- name: the backup snapshot directory must be present
+  file:
+    path: "{{ snapshot }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0700
+  tags:
+    - backup
+
+- name: Restart UDEV tasks
+  shell: systemctl restart systemd-udev-trigger.service
+
+- name: Lew1 Sonarqubedb work directory volume is mounted
+  mount:
+    path: "{{ workdir }}"
+    src: "{{ lew1_sonarqubedb_volume_id }}"
+    fstype: ext4
+    state: mounted
+  when: ansible_domain == "lew1.lewars.com"
+  tags:
+    - data
+
+- name: Lew2 Sonarqubedb work directory volume is mounted
+  mount:
+    path: "{{ workdir }}"
+    src: "{{ lew2_sonarqubedb_volume_id }}"
+    fstype: ext4
+    state: mounted
+  when: ansible_domain == "lew2.lewars.com"
+  tags:
+    - data
+
+- name: Lew1 Sonarqubedb backup directory volume is mounted
+  mount:
+    path: "{{ snapshot_root }}"
+    src: "{{ lew1_sonarqubedb_backup_volume_id }}"
+    fstype: ext4
+    state: mounted
+  when: ansible_domain == "lew1.lewrs.com"
+  tags:
+    - data
+
+- name: Lew2 Sonarqubedb backup directory volume is mounted
+  mount:
+    path: "{{ snapshot_root }}"
+    src: "{{ lew2_sonarqubedb_backup_volume_id }}"
+    fstype: ext4
+    state: mounted
+  when: ansible_domain == "lew2.lewars.com"
+  tags:
+    - data
+
+- name: Make sure init shell script is present
+  template:
+    src: init.sh.j2
+    dest: "{{ mysql_bootstrap_cmd }}"
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0750
+
+- name: Make sure sql init script is present
+  template:
+    src: init.sql.j2
+    dest: "{{ workdir }}/init.sql"
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0640
+
+- name: MySQL work directory is present
+  file:
+    path: "{{ workdir }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0700
+
+- name: MySQL work directory contents are owned by MySQL
+  file:
+    path: "{{ workdir }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    recurse: yes
+
+- name: sync script must be part of crontab
+  template:
+    src: sync.cron.j2
+    dest: /etc/cron.d/sync.cron
+
+- name: MySQL /var/log/mysql directory is present
+  file:
+    path: "{{ mysql_log_directory }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    recurse: yes
+
+- name: Sync MySQL work directory
+  shell: synccode=$(cat /etc/cron.d/sync.cron | grep sync.sh | cut -f 6- -d ' ') && [[ -n \"$synccode\" ]] && su - $synccode >> {{ mysql_log_directory }}/rsync.client.log
+
+- name: MySQL config file is present
+  template:
+    src: my.cnf.j2
+    dest: "/etc/my.cnf"
+    owner: root
+    group: root
+    mode: 0644
+  notify: Restart MySQL
+
+- name: MySQL Systemd config file is present
+  template:
+    src: mysqld.service.j2
+    dest: /usr/lib/systemd/system/mysqld.service
+    owner: root
+    group: root
+  notify:
+    - Reload Systemd
+    - Restart MySQL
+
+- name: MySQL .ssh directory is present
+  file:
+    path: "{{ home }}/.ssh"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0700
+  tags:
+    - rsync
+    - ssh
+
+- name: MySQL authorized_keys file is present
+  template:
+    src: authorized_keys.j2
+    dest: "{{ home }}/.ssh/authorized_keys"
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0400
+  tags:
+    - rsync
+    - ssh
+
+- name: MySQL secrete key
+  copy:
+    src: id_rsa
+    dest: "{{ home }}/.ssh/id_rsa"
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0400
+  tags:
+    - rsync
+    - ssh
+
+- name: MySQL public key
+  copy:
+    src: id_rsa.pub
+    dest: "{{ home }}/.ssh/id_rsa.pub"
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0444
+  tags:
+    - rsync
+    - ssh
+
+- name: rsyncd config must be present
+  template:
+    src: rsyncd.conf.j2
+    dest: "{{ home }}/.rsyncd.conf"
+  tags:
+    - rsync
+
+- name: MySQL .ssh config should be present
+  template:
+    src: ssh-config.j2
+    dest: "{{ home }}/.ssh/config"
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0444
+  tags:
+    - rsync
+    - ssh
+
+- name: rsync logrotate configs must be present
+  template:
+    src: rsync-logrotate.j2
+    dest: /etc/logrotate.d/rsync
+    owner: root
+    group: root
+    mode: 0444
+  tags:
+    - rsync
+
+- name: backup script must be part of crontab
+  template:
+    src: backup.cron.j2
+    dest: /etc/cron.d/backup.cron
+  tags:
+    - crontab
+    - backup
+
+- name: read-only bind mount point must exists
+  file:
+    path: "{{ snapshot }}"
+    state: directory
+    owner: "{{ owner }}"
+    group: "{{ group }}"
+    mode: 0700
+
+- name: read-only bind mount for snapshots must be present
+  mount:
+    path: "{{ ro_snapshot }}"
+    src: "{{ snapshot }}"
+    opts: ro,bind
+    fstype: none
+    state: mounted
+  tags:
+    - backup
+
+- name: Check if MySQL datadir is present
+  stat:
+    path: "{{ mysql_datadir }}/mysql/db.frm"
+  register: db
+
+- name: Bootstrap MySQL database if database is not present
+  command: "{{ mysql_bootstrap_cmd }}"
+  when: db.stat.exists == False
+
+- name: MySQL must be running and start at boot time
+  service:
+    name: "{{ app }}d.service"
+    state: started
+    enabled: yes
+  notify: Reload Systemd
+
+- name: MySQL must be running as slave in passive datacenter
+  service:
+    name: "{{ app }}d.service"
+    state: stopped
+  when: tp_active_datacenter == False

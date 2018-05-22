@@ -1,0 +1,24 @@
+# Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+[Unit]
+Description=MySQL Server
+Documentation=man:mysqld(8)
+Documentation=http://dev.mysql.com/doc/refman/en/using-systemd.html
+After=network.target
+After=syslog.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+User={{ owner }}
+Group={{ group }}
+Type=forking
+PIDFile={{ mysql_pid_file }}
+TimeoutSec=0
+PermissionsStartOnly=true
+ExecStart=/usr/sbin/mysqld --daemonize --pid-file={{ mysql_pid_file }} $MYSQLD_OPTS
+EnvironmentFile=-/etc/sysconfig/mysql
+LimitNOFILE = {{ mysql_nofile_limit }}
+Restart=on-failure
+RestartPreventExitStatus=1
+PrivateTmp=false

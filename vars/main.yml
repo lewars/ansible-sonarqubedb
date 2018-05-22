@@ -1,0 +1,45 @@
+---
+# defaults for Sonarqube MySQL database
+app: "mysql"
+owner: "{{ app }}"
+group: "{{ app }}"
+home: "/opt/{{ app }}.home"
+snapshot_root: "/opt/.snapshots"
+snapshot: "{{ snapshot_root }}/{{ app }}"
+ro_snapshot: "/opt/{{ app }}.snapshots"
+workdir: "/opt/{{ app }}"
+datadir: "{{ workdir }}/data"
+shell: "/bin/bash"
+mysql_datadir: "{{ datadir }}"
+mysql_socket: "/var/lib/mysql/mysql.sock"
+mysql_symbolic_links: 0
+mysql_log_directory: "/var/log/mysql"
+mysql_general_log_file: "{{ mysql_log_directory }}/mysqld.log"
+mysql_general_log: 1
+mysql_long_query_time: 2
+mysql_error_log: "{{ mysql_log_directory }}/mysqld.log"
+mysql_pid_file: "/var/run/mysqld/mysqld.pid"
+mysql_explicit_defaults_for_timestamp: "true"
+mysql_root_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  30356234613533653761393335336264326462636338303935323034366135336164613963613533
+  3630643037656462343433336636626465393338656566300a323230626132646164313865303137
+  34353235656135616135623337346531383535623435663239363939643839343563323130343230
+  3432396262333665630a343431623730343131663661373663643538343662336366306163323439
+  3735
+mysql_sonarqube_db: 'sonarqube'
+mysql_sonarqube_user: 'sonarqube'
+mysql_sonarqube_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  62653362386130323334363366313332643539346231336663623739303339653133373333383034
+  3538616565613331376163356639323637306465343631620a313633366639343439663963343763
+  33373065373939346333323961623464623331623835323935323035323433653063396534376430
+  6534653364316266360a313135346531306232616561613133613634623335366431653633383837
+  3535
+mysql_nofile_limit: 5000
+mysql_bootstrap_cmd: "{{ workdir }}/init.sh"
+mysql_pkg:
+  - mysql-community-common
+  - mysql-community-client
+  - mysql-community-server
+  - mysql-community-libs

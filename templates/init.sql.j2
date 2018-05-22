@@ -1,0 +1,6 @@
+ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mysql_root_password }}';
+CREATE USER '{{ mysql_sonarqube_user }}'@'localhost' IDENTIFIED BY '{{ mysql_sonarqube_password }}';
+CREATE USER '{{ mysql_sonarqube_user }}'@'%' IDENTIFIED BY '{{ mysql_sonarqube_password }}';
+CREATE DATABASE {{ mysql_sonarqube_db }};
+GRANT ALL ON {{ mysql_sonarqube_db }}.* TO '{{ mysql_sonarqube_user }}'@'localhost';
+GRANT ALL ON {{ mysql_sonarqube_db }}.* TO '{{ mysql_sonarqube_user }}'@'%';
